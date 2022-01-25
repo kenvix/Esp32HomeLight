@@ -1,4 +1,3 @@
-import imp
 import os
 import sys
 from lib.tm1637 import TM1637Decimal

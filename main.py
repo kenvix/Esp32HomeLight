@@ -1,8 +1,10 @@
 import os
 import sys
+from lib.tm1637 import TM1637Decimal
 import log
 import network
 from config import netconfig
+from config import gpioconfig
 import time
 import install
 from network import WLAN
@@ -10,15 +12,18 @@ from lib import utelnetserver
 from lib import ftp_thread
 import uos
 import ntptime
+import utils
 import gpios
 from machine import Timer
 import _thread
+from machine import Pin
 
 sta_if: WLAN = None
 ap_if: WLAN = None
 
 ntp_timer: Timer = None
-
+# TM1637 Digital Display
+tmd = None
 
 def setupAP():
     log.info("Setting up AP with SSID %s     Key %s" %
@@ -84,7 +89,8 @@ def _runNTP():
             ntptime.host = netconfig.NTP_HOST  # 可选，ntp服务器，默认是"pool.ntp.org"
             ntptime.settime()   # 修改设备时间,到这就已经设置好了
             log.info("NTP time synced. Sync again after 6h")
-            time.sleep(6 * 60 * 60)
+            for _ in range(0, 30):
+                time.sleep(2 * 60)
         except Exception as e:
             log.error("NTP time Sync failed, retry after 3s")
             sys.print_exception(e, sys.stderr)
@@ -99,8 +105,36 @@ def setupNTP():
         _thread.start_new_thread(_runNTP, ())
 
 
+def setupDigitalClock():
+    global tmd
+    from lib import tm1637
+    tmd = tm1637.TM1637(clk=Pin(gpioconfig.LED_TM1637_PIN_CLK), dio=Pin(gpioconfig.LED_TM1637_PIN_DIO))
+
+
+def showDigital(s):
+    if tmd is not None:
+        tmd.show(s)
+
+
+def _keepShowTime():
+    global tmd
+    showColon = True
+    while True:
+        n = log.now()
+        tmd.numbers(n[4], n[5], colon=showColon)
+        showColon = not showColon 
+        time.sleep(3)        
+
+
+def keepShowTime():
+    _thread.start_new_thread(_keepShowTime, ())
+
 def _boot():
+    if gpioconfig.LED_TM1637_ENABLE is True:
+        setupDigitalClock()
+
     try:
+        showDigital('ap  ')
         setupAP()
         waitAPUp()
     except Exception as e:
@@ -108,19 +142,23 @@ def _boot():
         sys.print_exception(e, sys.stderr)
 
     try:
+        showDigital('ftp ')
         setupFTP()
     except Exception as e:
         log.error("Setup FTP server FAILED!")
         sys.print_exception(e, sys.stderr)
 
     try:
+        showDigital('sta ')
         setupSTA()
         waitSTAUp()
     except Exception as e:
         log.error("Setup Wi-FI STA FAILED!")
         sys.print_exception(e, sys.stderr)
 
+    showDigital('ntp ')
     setupNTP()
+    keepShowTime()
 
 
 def main():

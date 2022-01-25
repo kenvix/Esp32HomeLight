@@ -18,6 +18,7 @@ from machine import Timer
 import _thread
 from machine import Pin
 from lib import slimDNS
+import gc
 
 
 sta_if: WLAN = None
@@ -26,6 +27,23 @@ ap_if: WLAN = None
 ntp_timer: Timer = None
 # TM1637 Digital Display
 tmd = None
+
+
+def df():
+    s = os.statvfs('//')
+    return ('{0} MB'.format((s[0]*s[3])/1048576))
+
+
+def free(full=False):
+    F = gc.mem_free()
+    A = gc.mem_alloc()
+    T = F+A
+    P = '{0:.2f}%'.format(F/T*100)
+    if not full:
+        return P
+    else:
+        return ('Total:{0} Free:{1} ({2})'.format(T, F, P))
+
 
 def setupAP():
     log.info("Setting up AP with SSID %s     Key %s" %
@@ -43,8 +61,8 @@ def setupAP():
     ap_if.ifconfig((netconfig.AP_IP, '255.255.255.0',
                     netconfig.AP_GATEWAY, netconfig.AP_DNS))
     log.info("AP Config: %s" % str(ap_if.ifconfig()))
-    
-    
+
+
 def setupmDNS(local_addr):
     server = slimDNS.SlimDNSServer(local_addr, netconfig.DEVICE_NAME.lower())
     _thread.start_new_thread(server.run_forever, ())
@@ -115,7 +133,8 @@ def setupNTP():
 def setupDigitalClock():
     global tmd
     from lib import tm1637
-    tmd = tm1637.TM1637(clk=Pin(gpioconfig.LED_TM1637_PIN_CLK), dio=Pin(gpioconfig.LED_TM1637_PIN_DIO))
+    tmd = tm1637.TM1637(clk=Pin(gpioconfig.LED_TM1637_PIN_CLK),
+                        dio=Pin(gpioconfig.LED_TM1637_PIN_DIO))
 
 
 def showDigital(s):
@@ -129,18 +148,19 @@ def _keepShowTime():
     while True:
         n = log.now()
         tmd.numbers(n[4], n[5], colon=showColon)
-        showColon = not showColon 
-        time.sleep(3)        
+        showColon = not showColon
+        time.sleep(3)
 
 
 def keepShowTime():
     _thread.start_new_thread(_keepShowTime, ())
 
+
 def _boot():
     if gpioconfig.LED_TM1637_ENABLE is True:
         setupDigitalClock()
         showDigital('gpio')
-    
+
     gpios.loadPin()
 
     try:

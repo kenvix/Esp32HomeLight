@@ -17,6 +17,8 @@ import gpios
 from machine import Timer
 import _thread
 from machine import Pin
+from lib import slimDNS
+
 
 sta_if: WLAN = None
 ap_if: WLAN = None
@@ -41,6 +43,11 @@ def setupAP():
     ap_if.ifconfig((netconfig.AP_IP, '255.255.255.0',
                     netconfig.AP_GATEWAY, netconfig.AP_DNS))
     log.info("AP Config: %s" % str(ap_if.ifconfig()))
+    
+    
+def setupmDNS(local_addr):
+    server = slimDNS.SlimDNSServer(local_addr, netconfig.DEVICE_NAME.lower())
+    _thread.start_new_thread(server.run_forever, ())
 
 
 def waitAPUp():
@@ -140,6 +147,8 @@ def _boot():
         showDigital('ap  ')
         setupAP()
         waitAPUp()
+        log.info("Starting mDNS for AP")
+        setupmDNS(ap_if.ifconfig()[0])
     except Exception as e:
         log.error("Setup Wi-FI AP FAILED!")
         sys.print_exception(e, sys.stderr)
@@ -155,6 +164,8 @@ def _boot():
         showDigital('sta ')
         setupSTA()
         waitSTAUp()
+        log.info("Starting mDNS for STA")
+        setupmDNS(sta_if.ifconfig()[0])
     except Exception as e:
         log.error("Setup Wi-FI STA FAILED!")
         sys.print_exception(e, sys.stderr)

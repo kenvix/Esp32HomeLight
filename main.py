@@ -132,6 +132,9 @@ def keepShowTime():
 def _boot():
     if gpioconfig.LED_TM1637_ENABLE is True:
         setupDigitalClock()
+        showDigital('gpio')
+    
+    gpios.loadPin()
 
     try:
         showDigital('ap  ')

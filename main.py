@@ -1,7 +1,9 @@
+import imp
 import os
 import sys
 from lib.tm1637 import TM1637Decimal
 import log
+import machine
 import network
 from config import netconfig
 from config import gpioconfig
@@ -95,8 +97,13 @@ def setupSTA():
         sta_if = network.WLAN(network.STA_IF)
         sta_if.active(True)
 
-def flash():
+def flashmode():
     os.remove("main.py")
+    machine.reset()
+
+def forceflash():
+    os.remove("project.pymakr")
+    flashmode()
 
 def waitSTAUp():
     global sta_if
@@ -117,7 +124,7 @@ def waitSTAUp():
                     
                     if waitScan == True:
                         log.info("Target STA SSID NOT exist. Waiting")
-                        time.sleep(8)
+                        time.sleep(10)
                 except Exception as e:
                     log.error("STA scan failed: %s" % str(e))
 
@@ -141,20 +148,20 @@ def waitSTAUp():
             else:
                 log.info("STA %s is up" % netconfig.STA_SSID)
                 log.info("STA Connection info: %s" % str(sta_if.ifconfig()))
-                watchSTAConnection()
                 return 
 
 
 def _watchSTAConnection():
-    while sta_if.isconnected():
-        time.sleep(8)
-    
-    log.warn("STA connection lost.")
-    try:
-        sta_if.disconnect()
-    except Exception:
-        pass
-    waitSTAUp()
+    while True:
+        if sta_if.isconnected():
+            time.sleep(8)
+        else:
+            log.warn("STA connection lost.")
+            try:
+                sta_if.disconnect()
+                waitSTAUp()
+            except Exception:
+                pass
 
 
 def watchSTAConnection():
@@ -246,6 +253,7 @@ def _boot():
         showDigital('sta ')
         setupSTA()
         waitSTAUp()
+        watchSTAConnection()
         log.info("Starting mDNS for STA")
         setupmDNS(sta_if.ifconfig()[0])
     except Exception as e:

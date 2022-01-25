@@ -1,18 +1,12 @@
-from MicroWebSrv2 import *
-import time
+from config import netconfig
+import _thread
+import picoweb
 
-server = MicroWebSrv2()
+app = picoweb.WebApp(netconfig.DEVICE_NAME)
 
-def start():
-    server.BindAddress = ('0.0.0.0', 12345)
-    server.RootPath = 'www'
-    server.StartManaged(parllProcCount=3)
+def _start(port=80):
+    app.run("0.0.0.0", port)
+    pass
 
-
-if __name__ == "__main__":
-    start()
-    try :
-        while True :
-            sleep(1)
-    except KeyboardInterrupt :
-        server.Stop()
+def start(port=80):
+    _thread.start_new_thread(_start, ((port,)))

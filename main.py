@@ -8,7 +8,7 @@ from config import gpioconfig
 import time
 import install
 from network import WLAN
-from lib import utelnetserver
+# from lib import utelnetserver
 from lib import ftp_thread
 import uos
 import ntptime
@@ -20,6 +20,9 @@ from machine import Pin
 from lib import slimDNS
 import gc
 
+gc.collect()
+import webserver
+gc.collect()
 
 sta_if: WLAN = None
 ap_if: WLAN = None
@@ -34,7 +37,7 @@ def df():
     return ('{0} MB'.format((s[0]*s[3])/1048576))
 
 
-def free(full=False):
+def free(full=True):
     F = gc.mem_free()
     A = gc.mem_alloc()
     T = F+A
@@ -189,16 +192,26 @@ def _boot():
     except Exception as e:
         log.error("Setup Wi-FI STA FAILED!")
         sys.print_exception(e, sys.stderr)
+    
+    try:
+        showDigital('http')
+        log.info("Starting http server")
+        webserver.start()
+    except Exception as e:
+        log.error("Setup HTTP server FAILED!")
+        sys.print_exception(e, sys.stderr)
 
     showDigital('ntp ')
     setupNTP()
     keepShowTime()
+    gc.collect()
 
 
 def main():
     log.info("Kenvix Home Light Controller v1.0")
     log.info("System info: %s" % str(os.uname()))
-
+    gc.enable()
+    gc.collect()
     _thread.start_new_thread(_boot, ())
     pass
 

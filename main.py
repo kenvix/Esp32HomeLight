@@ -1,5 +1,5 @@
 import os
-import sys 
+import sys
 import log
 import network
 from config import netconfig
@@ -8,10 +8,14 @@ import install
 from network import WLAN
 from lib import utelnetserver
 from lib import ftp_thread
+import uos
+import ntptime
+from machine import Timer
 
 sta_if: WLAN = None
 ap_if: WLAN = None
 
+ntp_timer: Timer = None
 
 def setupAP():
     log.info("Setting up AP with SSID %s     Key %s" % (netconfig.DEVICE_NAME, netconfig.AP_WPA_KEY))
@@ -68,6 +72,24 @@ def waitSTAUp():
         log.info("STA Connection info: %s" % str(sta_if.ifconfig()))
 
 
+def setupNTP():
+    global sta_if, ntp_timer
+    if sta_if is None:
+        log.info("STA not configured, skip NTP client") 
+    else:
+        try:
+            ntptime.NTP_DELTA = netconfig.TIMEZONE_DELTA   # 可选 UTC+8偏移时间（秒），不设置就是UTC0
+            ntptime.host = netconfig.NTP_HOST  # 可选，ntp服务器，默认是"pool.ntp.org"
+            ntptime.settime()   # 修改设备时间,到这就已经设置好了
+            log.info("NTP time synced. Sync again after 6h")
+            ntp_timer = Timer(period=6 * 60 * 60 * 1000, mode=Timer.ONE_SHOT, callback=setupNTP)
+        except Exception as e:
+            log.error("NTP time Sync failed, retry after 3s")
+            sys.print_exception(e, sys.stderr)
+            ntp_timer = Timer(period=3000, mode=Timer.ONE_SHOT, callback=setupNTP)
+        pass
+
+
 def main():
     log.info("Kenvix Home Light Controller v1.0")
     log.info("System info: %s" % str(os.uname()))
@@ -92,6 +114,7 @@ def main():
         log.error("Setup Wi-FI STA FAILED!")
         sys.print_exception(e, sys.stderr)
 
+    setupNTP()
     pass
 
 if __name__ == "__main__":

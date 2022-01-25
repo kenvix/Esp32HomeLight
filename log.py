@@ -6,10 +6,10 @@ def eprint(*args, **kwargs):
 
 def print_log(level, message):
     t = time.time()
-    if int(t) < 1643079837:
-        t = str(t)
-    else:
-        t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    # if int(t) < 696432783:
+    #     t = str(t)
+    # else:
+    #     t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     eprint("[%s][%s] %s" % (t, level, str(message)))
 

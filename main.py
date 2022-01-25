@@ -28,8 +28,6 @@ sta_if: WLAN = None
 ap_if: WLAN = None
 
 ntp_timer: Timer = None
-# TM1637 Digital Display
-tmd = None
 
 
 def df():
@@ -134,23 +132,21 @@ def setupNTP():
 
 
 def setupDigitalClock():
-    global tmd
     from lib import tm1637
-    tmd = tm1637.TM1637(clk=Pin(gpioconfig.LED_TM1637_PIN_CLK),
+    gpios.tmd = tm1637.TM1637(clk=Pin(gpioconfig.LED_TM1637_PIN_CLK),
                         dio=Pin(gpioconfig.LED_TM1637_PIN_DIO))
 
 
 def showDigital(s):
-    if tmd is not None:
-        tmd.show(s)
+    if gpios.tmd is not None:
+        gpios.tmd.show(s)
 
 
 def _keepShowTime():
-    global tmd
     showColon = True
     while True:
         n = log.now()
-        tmd.numbers(n[4], n[5], colon=showColon)
+        gpios.tmd.numbers(n[4], n[5], colon=showColon)
         showColon = not showColon
         time.sleep(3)
 

@@ -8,7 +8,7 @@ from config import gpioconfig
 import time
 import install
 from network import WLAN
-# from lib import utelnetserver
+from lib import utelnetserver
 from lib import ftp_thread
 import uos
 import ntptime
@@ -94,17 +94,73 @@ def setupSTA():
                  (netconfig.STA_SSID, netconfig.STA_WPA_KEY))
         sta_if = network.WLAN(network.STA_IF)
         sta_if.active(True)
-        sta_if.connect(netconfig.STA_SSID, netconfig.STA_WPA_KEY)
 
+def flash():
+    os.remove("main.py")
 
 def waitSTAUp():
     global sta_if
+    waitCount = 0
     if sta_if is not None:
-        while sta_if.isconnected() == False:
-            time.sleep(0.3)
-            pass
-        log.info("STA %s is up" % netconfig.STA_SSID)
-        log.info("STA Connection info: %s" % str(sta_if.ifconfig()))
+        while True:
+            waitScan = True
+            while waitScan:
+                try:
+                    scanResults = sta_if.scan()
+                    for scanResult in scanResults:
+                        ssid = scanResult[0].decode()
+                        log.trace("Scan: %s : %s" % (ssid, str(scanResult)))
+                        if ssid == netconfig.STA_SSID:
+                            log.info("Target STA SSID exist. Continue")
+                            waitScan = False
+                            break
+                    
+                    if waitScan == True:
+                        log.info("Target STA SSID NOT exist. Waiting")
+                        time.sleep(8)
+                except Exception as e:
+                    log.error("STA scan failed: %s" % str(e))
+
+            try:
+                sta_if.connect(netconfig.STA_SSID, netconfig.STA_WPA_KEY)
+            except Exception as e:
+                log.error("STA connection failed: %s" % str(e))
+                waitCount = 99999
+
+            while sta_if.isconnected() == False and waitCount < 60:
+                time.sleep(0.3)
+                waitCount += 1
+                pass
+
+            if waitCount >= 60:
+                log.error("STA connection failed. retry")
+                try:
+                    sta_if.disconnect()
+                except Exception:
+                    pass
+            else:
+                log.info("STA %s is up" % netconfig.STA_SSID)
+                log.info("STA Connection info: %s" % str(sta_if.ifconfig()))
+                watchSTAConnection()
+                return 
+
+
+def _watchSTAConnection():
+    while sta_if.isconnected():
+        time.sleep(8)
+    
+    log.warn("STA connection lost.")
+    try:
+        sta_if.disconnect()
+    except Exception:
+        pass
+    waitSTAUp()
+
+
+def watchSTAConnection():
+    global sta_if
+    if sta_if is not None:
+        _thread.start_new_thread(_watchSTAConnection, ())
 
 
 def _runNTP():
@@ -178,6 +234,13 @@ def _boot():
     except Exception as e:
         log.error("Setup FTP server FAILED!")
         sys.print_exception(e, sys.stderr)
+    
+    try:
+        showDigital('teln')
+        utelnetserver.start()
+    except Exception as e:
+        log.error("Setup Telnet server FAILED!")
+        sys.print_exception(e, sys.stderr)
 
     try:
         showDigital('sta ')
@@ -208,7 +271,7 @@ def main():
     log.info("System info: %s" % str(os.uname()))
     gc.enable()
     gc.collect()
-    _thread.start_new_thread(_boot, ())
+    _boot()
     pass
 
 

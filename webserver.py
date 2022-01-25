@@ -10,14 +10,15 @@ app = picoweb.WebApp(netconfig.DEVICE_NAME)
 def index(req, resp):
     yield from resp.awrite("Working")
 
+htmlText: str
 
 def returnLightSwitchHTML(req, resp, state):
     yield from picoweb.start_response(resp, headers={
         'Cache-control' : 'no-store'
     })
-    htmlFile = open('static/gpio.html', 'r')
-    for line in htmlFile:
-      yield from resp.awrite(line.replace("{{$currentTime}}", log.nowInString()).replace("{{$currentState}}", state))
+    
+    now = log.nowInString()
+    yield from resp.awrite(htmlText.replace("{{$currentTime}}", now).replace("{{$currentState}}", state))
 
 
 @app.route("/light")
@@ -35,4 +36,7 @@ def _start(port=80):
     pass
 
 def start(port=80):
+    global htmlText
+    htmlFile = open('static/gpio.html', 'r')
+    htmlText = htmlFile.read()
     _thread.start_new_thread(_start, ((port,)))

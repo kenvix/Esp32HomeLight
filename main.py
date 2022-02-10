@@ -117,7 +117,6 @@ def forceflash():
 
 def waitSTAUp():
     global sta_if
-    waitCount = 0
     if sta_if is not None:
         while True:
             # waitScan = True
@@ -137,7 +136,8 @@ def waitSTAUp():
             #             time.sleep(10)
             #     except Exception as e:
             #         log.error("STA scan failed: %s" % str(e))
-
+            waitCount = 0
+            
             try:
                 sta_if.connect(netconfig.STA_SSID, netconfig.STA_WPA_KEY)
             except Exception as e:

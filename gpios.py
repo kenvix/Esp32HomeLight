@@ -20,6 +20,10 @@ def loadPin():
     )
     pinLight = machine.Pin(gpioconfig.LIGHT_PIN, Pin.OUT)
 
+def reboot():
+    pinReset: Pin = machine.Pin(gpioconfig.REBOOT_PIN, Pin.OUT)
+    pinReset.value(1)
+
 def switchLight():
     pinLight.value(not pinLight.value())
     if pinLight.value() == 0:

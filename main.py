@@ -35,6 +35,17 @@ def df():
     s = os.statvfs('//')
     return ('{0} MB'.format((s[0]*s[3])/1048576))
 
+def reboot():
+    try:
+        if gpioconfig.REBOOT_PIN is not None:
+            log.info("Reset pin found, hard rebooting")
+            gpios.reboot()
+        else:
+            raise NameError("No reset pin defined")
+    except Exception:
+        log.warn("No reset pin defined, using soft reboot")
+        machine.reset()
+
 
 def free(full=True):
     F = gc.mem_free()
